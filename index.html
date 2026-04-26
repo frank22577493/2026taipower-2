@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>城市電力指揮官 | 台電2026智慧能源週</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0D1B2A; color:#fff; font-family:'Microsoft JhengHei','PingFang TC',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+  /* ─── Layout ─── */
+  #app { max-width:960px; margin:0 auto; padding:24px 20px; }
+  .screen { display:none; animation:fadeIn 0.4s ease; }
+  .screen.active { display:block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ─── Header bar ─── */
+  .top-bar { background:#00B0F0; height:5px; width:100%; position:fixed; top:0; left:0; z-index:99; }
+  .bot-bar { background:#F2A900; height:5px; width:100%; position:fixed; bottom:0; left:0; z-index:99; }
+
+  /* ─── Chips & Labels ─── */
+  .chip { display:inline-block; background:#00B0F0; color:#0D1B2A; font-size:11px; font-weight:700; padding:3px 10px; border-radius:2px; letter-spacing:1px; }
+  .chip-gold { background:#F2A900; }
+  .chip-red { background:#C0392B; color:#fff; }
+  .chip-green { background:#27AE60; color:#fff; }
+  .step-label { font-size:11px; color:#00B0F0; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+
+  /* ─── Progress bar ─── */
+  .progress { display:flex; gap:8px; margin-bottom:28px; }
+  .prog-step { flex:1; height:4px; background:#1A3050; border-radius:2px; transition:background 0.4s; }
+  .prog-step.done { background:#00B0F0; }
+  .prog-step.current { background:#F2A900; }
+
+  /* ─── Title section ─── */
+  .page-title { font-size:36px; font-weight:700; line-height:1.2; margin-bottom:8px; }
+  .page-sub { font-size:14px; color:#7A9BB5; margin-bottom:24px; }
+  hr.divider { border:none; border-top:1px solid #1A3050; margin:20px 0; }
+
+  /* ─── Buttons ─── */
+  .btn { display:inline-block; padding:12px 28px; border:none; border-radius:3px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; letter-spacing:0.5px; }
+  .btn-primary { background:#00B0F0; color:#0D1B2A; }
+  .btn-primary:hover { background:#33BFFF; transform:translateY(-1px); }
+  .btn-gold { background:#F2A900; color:#0D1B2A; }
+  .btn-gold:hover { background:#FFBC1F; transform:translateY(-1px); }
+  .btn-ghost { background:transparent; border:1px solid #1F4E79; color:#7A9BB5; margin-right:10px; }
+  .btn-ghost:hover { border-color:#00B0F0; color:#fff; }
+  .btn:disabled { opacity:0.35; cursor:not-allowed; transform:none; }
+  .btn-row { margin-top:28px; }
+
+  /* ─── Cards ─── */
+  .card { background:#162535; border:1px solid #1A3050; border-radius:4px; padding:20px; margin-bottom:14px; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:#1A3050; transition:background 0.2s; }
+  .card:hover { border-color:#2E75B6; }
+  .card:hover::before { background:#2E75B6; }
+  .card.selected { border-color:#00B0F0; background:#0F2030; }
+  .card.selected::before { background:#00B0F0; }
+  .card.disabled { opacity:0.4; cursor:not-allowed; }
+  .card-title { font-size:18px; font-weight:700; margin-bottom:6px; }
+  .card-desc { font-size:13px; color:#7A9BB5; line-height:1.6; }
+  .card-tag { font-size:11px; color:#00B0F0; margin-top:8px; }
+  .card-effect { font-size:12px; color:#F2A900; margin-top:6px; font-style:italic; }
+  .card-check { position:absolute; top:14px; right:14px; width:22px; height:22px; border-radius:50%; background:#00B0F0; display:none; align-items:center; justify-content:center; font-size:13px; color:#0D1B2A; font-weight:700; }
+  .card.selected .card-check { display:flex; }
+
+  /* ─── Grid layouts ─── */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  @media(max-width:600px) { .grid-2,.grid-3 { grid-template-columns:1fr; } .page-title{font-size:26px;} }
+
+  /* ─── Slider ─── */
+  .slider-wrap { background:#162535; border:1px solid #1A3050; border-radius:4px; padding:20px; margin-bottom:14px; }
+  .slider-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+  .slider-desc { font-size:12px; color:#7A9BB5; margin-bottom:14px; }
+  .slider-track { display:flex; align-items:center; gap:12px; }
+  .slider-track input[type=range] { flex:1; accent-color:#00B0F0; height:4px; }
+  .slider-val { font-size:20px; font-weight:700; color:#00B0F0; min-width:48px; text-align:right; }
+  .slider-labels { display:flex; justify-content:space-between; font-size:11px; color:#7A9BB5; margin-top:6px; }
+  .total-bar { background:#0F1E2D; border:1px solid #1A3050; border-radius:3px; padding:12px 16px; margin-top:16px; display:flex; justify-content:space-between; align-items:center; }
+  .total-bar .label { font-size:12px; color:#7A9BB5; }
+  .total-bar .value { font-size:18px; font-weight:700; }
+  .total-bar .value.ok { color:#27AE60; }
+  .total-bar .value.warn { color:#F2A900; }
+  .total-bar .value.over { color:#C0392B; }
+
+  /* ─── Cover / Mission ─── */
+  .cover-glow { background:radial-gradient(ellipse at center, #1F4E79 0%, transparent 70%); border-radius:50%; width:480px; height:280px; margin:30px auto; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+  .cover-title { font-size:58px; font-weight:700; text-align:center; line-height:1.1; }
+  .cover-en { font-size:13px; color:#00B0F0; letter-spacing:4px; text-align:center; margin-top:8px; }
+  .mission-box { background:#1F4E79; border-left:4px solid #F2A900; padding:16px 20px; border-radius:0 4px 4px 0; margin:20px 0; }
+  .mission-box h3 { font-size:14px; color:#F2A900; margin-bottom:6px; letter-spacing:1px; }
+  .mission-box p { font-size:14px; color:#fff; line-height:1.7; }
+  .info-row { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
+  .info-pill { background:#162535; border:1px solid #1A3050; border-radius:20px; padding:6px 14px; font-size:12px; color:#7A9BB5; }
+  .info-pill span { color:#fff; font-weight:700; }
+
+  /* ─── Results ─── */
+  .score-circle { width:140px; height:140px; border-radius:50%; border:4px solid #00B0F0; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0 auto 20px; background:#0F2030; }
+  .score-num { font-size:48px; font-weight:700; color:#00B0F0; line-height:1; }
+  .score-unit { font-size:13px; color:#7A9BB5; margin-top:2px; }
+  .rank-row { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:24px; }
+  .rank-label { font-size:13px; color:#7A9BB5; }
+  .rank-badge { font-size:22px; font-weight:700; padding:4px 16px; border-radius:3px; }
+  .result-item { background:#162535; border:1px solid #1A3050; border-radius:4px; padding:14px 18px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+  .result-item .name { font-size:14px; color:#7A9BB5; }
+  .result-item .pts { font-size:16px; font-weight:700; }
+  .pts.plus { color:#27AE60; }
+  .pts.minus { color:#C0392B; }
+  .pts.neutral { color:#F2A900; }
+  .comment-box { background:#1F4E79; border-left:4px solid #00B0F0; padding:16px 20px; border-radius:0 4px 4px 0; margin:20px 0; }
+  .comment-box p { font-size:14px; line-height:1.7; }
+  .leaderboard { margin-top:24px; }
+  .lb-row { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:3px; margin-bottom:6px; }
+  .lb-row.highlight { background:#0F2030; border:1px solid #00B0F0; }
+  .lb-rank { font-size:18px; font-weight:700; min-width:30px; text-align:center; }
+  .lb-name { flex:1; font-size:14px; }
+  .lb-score { font-size:16px; font-weight:700; color:#00B0F0; }
+  .city-flag { font-size:16px; }
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="bot-bar"></div>
+
+<div id="app">
+
+  <!-- ══ SCREEN 0: COVER ══ -->
+  <div class="screen active" id="s0">
+    <div style="text-align:center;padding-top:40px;">
+      <div class="chip" style="margin-bottom:20px;">台電 2026 智慧能源週　展覽互動體驗</div>
+      <div class="cover-glow">
+        <div class="cover-title">城市電力<br>指揮官</div>
+        <div class="cover-en">CITY POWER COMMANDER</div>
+      </div>
+      <div class="mission-box" style="max-width:580px;margin:20px auto;">
+        <h3>⚡ 任務簡報</h3>
+        <p>AI機房爆量！全台灣多個城市同時提出擴增算力需求。<br>
+        身為城市電力調度員，你必須在有限資源內，做出最聰明的電力布局決策。</p>
+      </div>
+      <div class="info-row" style="justify-content:center;">
+        <div class="info-pill">決策關卡 <span>3 個</span></div>
+        <div class="info-pill">滿分 <span>100 分</span></div>
+        <div class="info-pill">時間限制 <span>無限制</span></div>
+      </div>
+      <button class="btn btn-gold" style="margin-top:28px;font-size:18px;padding:16px 48px;" onclick="go(1)">開始接受任務 →</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 1: 土地選址 ══ -->
+  <div class="screen" id="s1">
+    <div class="progress">
+      <div class="prog-step current"></div>
+      <div class="prog-step"></div>
+      <div class="prog-step"></div>
+    </div>
+    <div class="step-label">PHASE 01 ／ 土地選址</div>
+    <div class="page-title">選擇 AI 資料中心落點</div>
+    <div class="page-sub">選出最多 2 個城市，作為新設 AI 資料中心用地（需考量電力條件、土地成本、交通）</div>
+    <hr class="divider">
+
+    <div class="grid-2" id="city-cards">
+      <div class="card" onclick="toggleCity(this,'高雄')">
+        <div class="card-check">✓</div>
+        <div class="card-title">🏙 高雄　<span style="font-size:13px;color:#7A9BB5;">南台灣</span></div>
+        <div class="card-desc">已完成 345KV 強韌電網超前佈建，多處大型工業用地可用，電力匹配度最高。</div>
+        <div class="card-tag">★ 電力條件：優　土地成本：中</div>
+        <div class="card-effect">+25分 潛力值</div>
+      </div>
+      <div class="card" onclick="toggleCity(this,'台南')">
+        <div class="card-check">✓</div>
+        <div class="card-title">🌊 台南　<span style="font-size:13px;color:#7A9BB5;">科學園區</span></div>
+        <div class="card-desc">南科園區腹地充足，半導體聚落帶動電力基礎建設，水資源穩定。</div>
+        <div class="card-tag">★ 電力條件：良　土地成本：低</div>
+        <div class="card-effect">+22分 潛力值</div>
+      </div>
+      <div class="card" onclick="toggleCity(this,'台中')">
+        <div class="card-check">✓</div>
+        <div class="card-title">🏔 台中　<span style="font-size:13px;color:#7A9BB5;">中台灣樞紐</span></div>
+        <div class="card-desc">位居台灣中心，物流便利，惟電網老舊設施仍在升級中，供電穩定度稍低。</div>
+        <div class="card-tag">★ 電力條件：中　土地成本：中高</div>
+        <div class="card-effect">+16分 潛力值</div>
+      </div>
+      <div class="card" onclick="toggleCity(this,'桃園')">
+        <div class="card-check">✓</div>
+        <div class="card-title">✈ 桃園　<span style="font-size:13px;color:#7A9BB5;">北台灣門戶</span></div>
+        <div class="card-desc">鄰近機場、港口，國際連接性強，但土地成本高，用電需求已非常密集。</div>
+        <div class="card-tag">★ 電力條件：中　土地成本：高</div>
+        <div class="card-effect">+18分 潛力值</div>
+      </div>
+      <div class="card" onclick="toggleCity(this,'新竹')">
+        <div class="card-check">✓</div>
+        <div class="card-title">💻 新竹　<span style="font-size:13px;color:#7A9BB5;">科技首都</span></div>
+        <div class="card-desc">竹科人才密度最高，但土地極度稀缺，電網負載已接近飽和，擴建難度大。</div>
+        <div class="card-tag">★ 電力條件：緊張　土地成本：極高</div>
+        <div class="card-effect">+12分 潛力值</div>
+      </div>
+      <div class="card" onclick="toggleCity(this,'嘉義')">
+        <div class="card-check">✓</div>
+        <div class="card-title">🌾 嘉義　<span style="font-size:13px;color:#7A9BB5;">新興選項</span></div>
+        <div class="card-desc">土地成本最低，腹地廣，綠能建設中，惟缺乏產業聚落，配套建設待完善。</div>
+        <div class="card-tag">★ 電力條件：開發中　土地成本：最低</div>
+        <div class="card-effect">+14分 潛力值</div>
+      </div>
+    </div>
+
+    <div id="city-hint" style="font-size:13px;color:#F2A900;margin-top:8px;min-height:20px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="go(0)">← 返回</button>
+      <button class="btn btn-primary" id="btn-next1" disabled onclick="go(2)">下一關：電力匹配 →</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 2: 電力匹配 ══ -->
+  <div class="screen" id="s2">
+    <div class="progress">
+      <div class="prog-step done"></div>
+      <div class="prog-step current"></div>
+      <div class="prog-step"></div>
+    </div>
+    <div class="step-label">PHASE 02 ／ 電力匹配</div>
+    <div class="page-title">選擇電力基礎建設</div>
+    <div class="page-sub">預算有限，選出最多 2 項電力建設搭配你的土地選址（不同選項對應不同效益）</div>
+    <hr class="divider">
+
+    <div class="grid-2" id="power-cards">
+      <div class="card" onclick="togglePower(this,'345kv')">
+        <div class="card-check">✓</div>
+        <div class="card-title">⚡ 345KV 強韌電網</div>
+        <div class="card-desc">超高壓輸電系統，可同時供應多個大型用戶，穩定度最高，建置成本也最高。最適合高雄、台南。</div>
+        <div class="card-tag">適合：大型工業廠區、AI資料中心群</div>
+        <div class="card-effect">+28分 穩定度　+20分 容量</div>
+      </div>
+      <div class="card" onclick="togglePower(this,'vpp')">
+        <div class="card-check">✓</div>
+        <div class="card-title">🧠 VPP 虛擬電廠</div>
+        <div class="card-desc">整合分散式能源（太陽能、儲能、需量反應），以AI即時調度，適合電網已飽和地區靈活補充。</div>
+        <div class="card-tag">適合：新竹、桃園等電網壓力大地區</div>
+        <div class="card-effect">+22分 彈性　+15分 韌性</div>
+      </div>
+      <div class="card" onclick="togglePower(this,'storage')">
+        <div class="card-check">✓</div>
+        <div class="card-title">🔋 儲能場站</div>
+        <div class="card-desc">大型鋰電池儲能系統，在用電離峰時儲電，尖峰時放電，削峰填谷效果顯著。</div>
+        <div class="card-tag">適合：任何城市的基礎配套</div>
+        <div class="card-effect">+18分 穩定度　+12分 效率</div>
+      </div>
+      <div class="card" onclick="togglePower(this,'solar')">
+        <div class="card-check">✓</div>
+        <div class="card-title">☀ 大型太陽光電</div>
+        <div class="card-desc">利用廣大屋頂或農業用地建置光電，降低對傳統電網依賴，台南、嘉義日照條件優越。</div>
+        <div class="card-tag">適合：台南、嘉義、南部地區</div>
+        <div class="card-effect">+15分 綠能　+10分 自給率</div>
+      </div>
+    </div>
+
+    <div id="power-hint" style="font-size:13px;color:#F2A900;margin-top:8px;min-height:20px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="go(1)">← 返回</button>
+      <button class="btn btn-primary" id="btn-next2" disabled onclick="go(3)">下一關：分散配置 →</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 3: 分散配置 ══ -->
+  <div class="screen" id="s3">
+    <div class="progress">
+      <div class="prog-step done"></div>
+      <div class="prog-step done"></div>
+      <div class="prog-step current"></div>
+    </div>
+    <div class="step-label">PHASE 03 ／ 分散配置</div>
+    <div class="page-title">電力資源分配比例</div>
+    <div class="page-sub">將總電力容量分配到各優先項目，合計需達 100%</div>
+    <hr class="divider">
+
+    <div class="slider-wrap">
+      <div class="slider-title">🏭 AI 資料中心供電</div>
+      <div class="slider-desc">直接供應選定城市的 AIDC 用電需求，比例越高產業效益越快顯現。</div>
+      <div class="slider-track">
+        <input type="range" min="0" max="80" value="40" id="sl1" oninput="updateSliders()">
+        <div class="slider-val" id="sv1">40%</div>
+      </div>
+      <div class="slider-labels"><span>0%</span><span>保守</span><span>積極 80%</span></div>
+    </div>
+
+    <div class="slider-wrap">
+      <div class="slider-title">🏘 城市民生用電備援</div>
+      <div class="slider-desc">確保一般民眾用電穩定，社會信任度的基礎。</div>
+      <div class="slider-track">
+        <input type="range" min="0" max="60" value="30" id="sl2" oninput="updateSliders()">
+        <div class="slider-val" id="sv2">30%</div>
+      </div>
+      <div class="slider-labels"><span>0%</span><span>最低建議 20%</span><span>60%</span></div>
+    </div>
+
+    <div class="slider-wrap">
+      <div class="slider-title">🌿 綠能轉型預留</div>
+      <div class="slider-desc">為未來再生能源整合預留容量，長期競爭力的關鍵。</div>
+      <div class="slider-track">
+        <input type="range" min="0" max="40" value="20" id="sl3" oninput="updateSliders()">
+        <div class="slider-val" id="sv3">20%</div>
+      </div>
+      <div class="slider-labels"><span>0%</span><span>未來競爭力</span><span>40%</span></div>
+    </div>
+
+    <div class="total-bar">
+      <div class="label">目前分配合計</div>
+      <div class="value ok" id="total-val">90%</div>
+    </div>
+    <div id="alloc-hint" style="font-size:13px;margin-top:8px;min-height:20px;color:#7A9BB5;">合計需達 100% 才能送出決策</div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="go(2)">← 返回</button>
+      <button class="btn btn-gold" id="btn-submit" disabled onclick="calcResult()" style="font-size:16px;padding:14px 36px;">送出決策，公布結果 ▶</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 4: RESULTS ══ -->
+  <div class="screen" id="s4">
+    <div class="step-label">決策結果公布</div>
+    <div class="page-title" id="res-title">城市競爭力評分</div>
+    <hr class="divider">
+
+    <div style="text-align:center;margin:24px 0;">
+      <div class="score-circle">
+        <div class="score-num" id="res-score">--</div>
+        <div class="score-unit">/ 100 分</div>
+      </div>
+      <div class="rank-row">
+        <div class="rank-label">城市競爭力排名</div>
+        <div class="rank-badge" id="res-rank">--</div>
+      </div>
+    </div>
+
+    <div id="res-breakdown"></div>
+
+    <div class="comment-box" id="res-comment">
+      <p id="res-comment-text"></p>
+    </div>
+
+    <div class="leaderboard">
+      <div class="step-label">本場排行榜（模擬）</div>
+      <div id="lb-list"></div>
+    </div>
+
+    <div class="btn-row" style="text-align:center;">
+      <button class="btn btn-ghost" onclick="resetGame()">← 重新挑戰</button>
+      <button class="btn btn-gold" onclick="showShare()" style="margin-left:10px;">分享我的決策 ↗</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+var state = { cities:[], powers:[], sl1:40, sl2:30, sl3:20 };
+
+const CITY_SCORES = {
+  '高雄':25, '台南':22, '台中':16, '桃園':18, '新竹':12, '嘉義':14
+};
+const POWER_SCORES = {
+  '345kv':24, 'vpp':18, 'storage':14, 'solar':12
+};
+const CITY_NAMES = {
+  '高雄':'🏙高雄', '台南':'🌊台南', '台中':'🏔台中',
+  '桃園':'✈桃園', '新竹':'💻新竹', '嘉義':'🌾嘉義'
+};
+const POWER_NAMES = {
+  '345kv':'345KV強韌電網', 'vpp':'VPP虛擬電廠', 'storage':'儲能場站', 'solar':'大型太陽光電'
+};
+
+// ── Screen navigation ──────────────────────────────────────────────────
+function go(n) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('s'+n).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ── Phase 1: City selection ────────────────────────────────────────────
+function toggleCity(card, city) {
+  if (card.classList.contains('disabled')) return;
+  var selected = card.classList.contains('selected');
+  if (selected) {
+    card.classList.remove('selected');
+    state.cities = state.cities.filter(function(c){ return c !== city; });
+  } else {
+    if (state.cities.length >= 2) {
+      document.getElementById('city-hint').textContent = '最多選 2 個城市';
+      return;
+    }
+    card.classList.add('selected');
+    state.cities.push(city);
+  }
+  var count = state.cities.length;
+  document.getElementById('city-hint').textContent =
+    count > 0 ? '已選：' + state.cities.map(function(c){return CITY_NAMES[c];}).join('　') : '';
+  document.getElementById('btn-next1').disabled = count === 0;
+  // Disable remaining if 2 selected
+  document.querySelectorAll('#city-cards .card').forEach(function(c){
+    c.classList.remove('disabled');
+    if (count >= 2 && !c.classList.contains('selected')) c.classList.add('disabled');
+  });
+}
+
+// ── Phase 2: Power selection ───────────────────────────────────────────
+function togglePower(card, power) {
+  if (card.classList.contains('disabled')) return;
+  var selected = card.classList.contains('selected');
+  if (selected) {
+    card.classList.remove('selected');
+    state.powers = state.powers.filter(function(p){ return p !== power; });
+  } else {
+    if (state.powers.length >= 2) {
+      document.getElementById('power-hint').textContent = '最多選 2 項建設';
+      return;
+    }
+    card.classList.add('selected');
+    state.powers.push(power);
+  }
+  var count = state.powers.length;
+  document.getElementById('power-hint').textContent =
+    count > 0 ? '已選：' + state.powers.map(function(p){return POWER_NAMES[p];}).join('　') : '';
+  document.getElementById('btn-next2').disabled = count === 0;
+  document.querySelectorAll('#power-cards .card').forEach(function(c){
+    c.classList.remove('disabled');
+    if (count >= 2 && !c.classList.contains('selected')) c.classList.add('disabled');
+  });
+}
+
+// ── Phase 3: Sliders ──────────────────────────────────────────────────
+function updateSliders() {
+  state.sl1 = +document.getElementById('sl1').value;
+  state.sl2 = +document.getElementById('sl2').value;
+  state.sl3 = +document.getElementById('sl3').value;
+  var total = state.sl1 + state.sl2 + state.sl3;
+  document.getElementById('sv1').textContent = state.sl1 + '%';
+  document.getElementById('sv2').textContent = state.sl2 + '%';
+  document.getElementById('sv3').textContent = state.sl3 + '%';
+  var tv = document.getElementById('total-val');
+  tv.textContent = total + '%';
+  tv.className = 'value ' + (total === 100 ? 'ok' : total > 100 ? 'over' : 'warn');
+  var hint = document.getElementById('alloc-hint');
+  if (total === 100) {
+    hint.textContent = '✓ 配置完成，可送出決策！';
+    hint.style.color = '#27AE60';
+  } else if (total > 100) {
+    hint.textContent = '⚠ 超出 100%，請調低某一項';
+    hint.style.color = '#C0392B';
+  } else {
+    hint.textContent = '還差 ' + (100 - total) + '%，合計需達 100%';
+    hint.style.color = '#7A9BB5';
+  }
+  document.getElementById('btn-submit').disabled = total !== 100;
+}
+
+// ── Calculate result ───────────────────────────────────────────────────
+function calcResult() {
+  var score = 0;
+  var breakdown = [];
+
+  // City scores
+  var cityScore = 0;
+  state.cities.forEach(function(c){ cityScore += CITY_SCORES[c]; });
+  var cityBonus = state.cities.includes('高雄') && state.cities.includes('台南') ? 5 : 0;
+  score += cityScore + cityBonus;
+  breakdown.push({
+    name:'土地選址：' + state.cities.map(function(c){return CITY_NAMES[c];}).join('＋'),
+    pts: cityScore + cityBonus,
+    note: cityBonus ? '南北平衡佈局加分 +5' : ''
+  });
+
+  // Power scores
+  var powerScore = 0;
+  state.powers.forEach(function(p){ powerScore += POWER_SCORES[p]; });
+  // Synergy: 345kv + vpp = bonus
+  var synergy = state.powers.includes('345kv') && state.powers.includes('vpp') ? 8 : 0;
+  score += powerScore + synergy;
+  breakdown.push({
+    name:'電力建設：' + state.powers.map(function(p){return POWER_NAMES[p];}).join('＋'),
+    pts: powerScore + synergy,
+    note: synergy ? 'VPP＋345KV 最強組合加分 +8' : ''
+  });
+
+  // Allocation scoring
+  var allocScore = 0;
+  if (state.sl1 >= 35 && state.sl1 <= 60) allocScore += 8;  // Good AIDC ratio
+  else if (state.sl1 >= 25) allocScore += 4;
+  if (state.sl2 >= 20) allocScore += 6;   // Sufficient civic backup
+  else allocScore -= 5;
+  if (state.sl3 >= 15) allocScore += 6;   // Green transition
+  else allocScore += 2;
+  allocScore = Math.max(0, allocScore);
+  score += allocScore;
+  breakdown.push({
+    name:'分散配置：AIDC ' + state.sl1 + '% ／ 民生 ' + state.sl2 + '% ／ 綠能 ' + state.sl3 + '%',
+    pts: allocScore,
+    note: state.sl2 < 20 ? '⚠ 民生備援過低，社會風險扣分' : ''
+  });
+
+  score = Math.min(100, Math.max(0, score));
+
+  // Render
+  var rankInfo = getRank(score);
+  document.getElementById('res-score').textContent = score;
+  var rb = document.getElementById('res-rank');
+  rb.textContent = rankInfo.label;
+  rb.style.background = rankInfo.color;
+  rb.style.color = score >= 60 ? '#0D1B2A' : '#fff';
+  document.getElementById('res-title').textContent = rankInfo.title;
+
+  // Breakdown
+  var bd = document.getElementById('res-breakdown');
+  bd.innerHTML = breakdown.map(function(item){
+    return '<div class="result-item"><div class="name">' + item.name +
+      (item.note ? '<br><span style="font-size:11px;color:#F2A900;">' + item.note + '</span>' : '') +
+      '</div><div class="pts plus">+' + item.pts + '</div></div>';
+  }).join('');
+
+  // Comment
+  document.getElementById('res-comment-text').textContent = rankInfo.comment;
+
+  // Leaderboard (simulated)
+  var others = [
+    {name:'玩家A', score:88, city:'高雄+台南'},
+    {name:'玩家B', score:76, city:'桃園+新竹'},
+    {name:'玩家C', score:62, city:'台中+嘉義'},
+    {name:'玩家D', score:54, city:'台南+台中'},
+  ];
+  others.push({name:'你', score:score, city: state.cities.map(function(c){return c;}).join('+'), isMe:true});
+  others.sort(function(a,b){ return b.score - a.score; });
+  var lb = document.getElementById('lb-list');
+  lb.innerHTML = others.slice(0,5).map(function(p, i){
+    return '<div class="lb-row ' + (p.isMe?'highlight':'') + '">' +
+      '<div class="lb-rank">' + ['🥇','🥈','🥉','4','5'][i] + '</div>' +
+      '<div class="lb-name">' + (p.isMe?'<strong>'+p.name+'</strong>':p.name) +
+        '<span style="font-size:11px;color:#7A9BB5;margin-left:8px;">' + p.city + '</span></div>' +
+      '<div class="lb-score">' + p.score + '</div>' +
+      '</div>';
+  }).join('');
+
+  go(4);
+}
+
+function getRank(score) {
+  if (score >= 85) return {
+    label:'S　城市電力大師',
+    color:'#F2A900',
+    title:'恭喜！你創造了電力最優城市',
+    comment:'你的決策完美平衡產業發展與民生穩定。選址精準、基礎建設超前佈建，分散配置合理——這正是台電推動「電力即城市競爭力」的核心精神。台灣的產業未來，需要這樣的前瞻決策！'
+  };
+  if (score >= 70) return {
+    label:'A　優秀調度員',
+    color:'#00B0F0',
+    title:'表現優秀！城市電力布局良好',
+    comment:'你掌握了電力前置規劃的關鍵，選址與建設搭配合理。小小建議：試試看 345KV 搭配 VPP 的強力組合，或嘗試南北城市平衡布局，可以拿到更高分！'
+  };
+  if (score >= 55) return {
+    label:'B　及格調度員',
+    color:'#2E75B6',
+    title:'還不錯，但有優化空間',
+    comment:'你的決策方向正確，但部分配置需要調整。電力前置規劃的關鍵是「提前佈建、精準配對」——現在看似超前的投資，未來都是城市競爭力的基石。建議重新思考電力匹配組合！'
+  };
+  return {
+    label:'C　新手調度員',
+    color:'#C0392B',
+    title:'城市電力還有很多成長空間',
+    comment:'不用氣餒！電力決策本就複雜。台電的工程師們也花了數十年才摸索出最佳的前置規劃策略。重新挑戰看看——試試選擇電力條件最好的城市，搭配 345KV 超前建設！'
+  };
+}
+
+function resetGame() {
+  state = { cities:[], powers:[], sl1:40, sl2:30, sl3:20 };
+  document.querySelectorAll('.card').forEach(function(c){
+    c.classList.remove('selected','disabled');
+  });
+  document.getElementById('sl1').value = 40;
+  document.getElementById('sl2').value = 30;
+  document.getElementById('sl3').value = 20;
+  document.getElementById('city-hint').textContent = '';
+  document.getElementById('power-hint').textContent = '';
+  document.getElementById('btn-next1').disabled = true;
+  document.getElementById('btn-next2').disabled = true;
+  updateSliders();
+  go(0);
+}
+
+function showShare() {
+  var score = document.getElementById('res-score').textContent;
+  var cities = state.cities.join('＋');
+  alert('分享文字已複製！\n\n「我在台電智慧能源週當了一回城市電力指揮官，\n選了【' + cities + '】，得了 ' + score + ' 分！\n電力就是城市競爭力——你也來試試 #電智流」');
+}
+
+// Init sliders
+updateSliders();
+</script>
+</body>
+</html>
